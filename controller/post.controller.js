@@ -10,7 +10,7 @@ const getData = async (req, res) => {
     const limit = pagination ?? 3;
     const pages = page ?? 1;
     const offset = (pages - 1) * limit;
-    const searchKey = `%${search}%` ?? '%';
+    const searchKey = (!search) ? '%' : `%${search}%`;
     const categoryKey = category ?? null;
     const startDate = start_date ?? null;
     const endDate = end_date ?? null;

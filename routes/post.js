@@ -11,7 +11,7 @@ router.use(jwtVerify);
 router.get('/', postValidator.queryData, postController.getData);
 
 // get by id
-router.get('/:id', postValidator.paramId, postController.getById);
+router.get('/id/:id', postValidator.paramId, postController.getById);
 
 // create post
 router.post('/create', postValidator.createData, postController.createPost);

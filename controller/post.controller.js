@@ -1,6 +1,7 @@
 const { sequelize } = require('../db');
 const moment = require('moment-timezone');
 const userTimezone = require('../config/timezone.config');
+const uploadFile = require('../utils/upload');
 
 // get data controller
 const getData = async (req, res) => {
@@ -45,6 +46,7 @@ const getData = async (req, res) => {
           c.category as category_name,
           p.title,
           p.contents,
+          p.images,
           p.created_at,
           p.updated_at
         FROM post as p
@@ -152,6 +154,7 @@ const getById = async (req, res) => {
           c.category as category_name,
           p.title,
           p.contents,
+          p.images,
           p.created_at,
           p.updated_at
         FROM post as p
@@ -188,11 +191,171 @@ const getById = async (req, res) => {
   }
 }
 
+// get by user controller
+const getByUser = async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { pagination, page, search, category, start_date, end_date, order_by, order } = req.query;
+    
+    const searchKey = (!search) ? '%' : `%${search}%`;
+    const categoryKey = category ?? null;
+    const startDate = start_date ?? null;
+    const endDate = end_date ?? null;
+    const orderBy = order_by ?? 'created_at';
+    const orderKey = order ?? 'DESC';
+    const limit = pagination ?? 3;
+    const pages = page ?? 1;
+    const offset = (pages - 1) * limit;
+
+    const usernameExist = await sequelize.query(
+      'SELECT username FROM users WHERE username = :username',
+      {
+        replacements: {
+          username
+        }
+      }
+    );
+
+    if (!usernameExist) {
+      return res.status(404).json({
+        message: 'username not found',
+        statusCode: 404
+      });
+    }
+
+    if (categoryKey) {
+      const categoryExist = await sequelize.query(
+        'SELECT category FROM category WHERE category = :categoryKey',
+        {
+          replacements: {
+            categoryKey
+          }
+        }
+      );
+      if (!categoryExist[0][0]) {
+        return res.status(404).json({
+          message: 'category not found',
+          statusCode: 404,
+          data: []
+        });
+      }
+    }
+
+    const getPost = await sequelize.query(
+      `SELECT
+          p.id as post_id,
+          p.user_id,
+          u.name,
+          u.username,
+          p.category_id,
+          c.category as category_name,
+          p.title,
+          p.contents,
+          p.images,
+          p.created_at,
+          p.updated_at
+        FROM post as p
+        LEFT JOIN category as c
+          ON p.category_id = c.id
+        LEFT JOIN users as u
+          ON p.user_id = u.id
+        WHERE
+          p.is_deleted = false
+          AND (
+            (p.title ILIKE :searchKey)
+            OR (p.contents ILIKE :searchKey)
+          )
+          AND (
+            (c.category = :categoryKey)
+            OR (:categoryKey IS NULL)
+          )
+          AND (
+            (:startDate IS NULL AND :endDate IS NULL)
+            OR (DATE(p.created_at) = :startDate)
+            OR (DATE(p.created_at) BETWEEN :startDate AND :endDate)
+          )
+          AND (u.username = :username)
+        ORDER BY ${orderBy} ${orderKey}
+        LIMIT :limit
+        OFFSET :offset`,
+      {
+        replacements: {
+          searchKey,
+          categoryKey,
+          startDate,
+          endDate,
+          username,
+          limit,
+          offset,
+        }
+      }
+    );
+    
+    const postData = getPost[0].map(x => ({...x, created_at: moment(x.created_at).tz(userTimezone).format()}));
+    const getDataAmount = await sequelize.query(
+      `SELECT
+          COUNT(p.id) as data_amount
+        FROM post as p
+        LEFT JOIN category as c
+          ON p.category_id = c.id
+        LEFT JOIN users as u
+          ON p.user_id = u.id
+        WHERE
+          p.is_deleted = false
+          AND (
+            (p.title ILIKE :searchKey)
+            OR (p.contents ILIKE :searchKey)
+          )
+          AND (
+            (c.category = :categoryKey)
+            OR (:categoryKey IS NULL)
+          )
+          AND (
+            (:startDate IS NULL AND :endDate IS NULL)
+            OR (DATE(p.created_at) = :startDate)
+            OR (DATE(p.created_at) BETWEEN :startDate AND :endDate)
+          )
+          AND (u.username = :username)`,
+      {
+        replacements: {
+          searchKey,
+          categoryKey,
+          startDate,
+          endDate,
+          username,
+        }
+      }
+    );
+    const dataAmount = getDataAmount[0][0].data_amount;
+    const maxPage = Math.ceil(dataAmount / limit);
+    
+    console.log(`${req.protocol}://${req.hostname}:${req.port}/`);
+
+    return res.status(200).json({
+      message: 'success',
+      statusCode: 200,
+      data: postData,
+      meta: {
+        pagination: Number(limit),
+        page: Number(pages),
+        data_amount: Number(dataAmount),
+        max_page: Number(maxPage)
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: error.message,
+      statusCode: 500
+    });
+  }
+}
+
 // create post controller
 const createPost = async (req, res) => {
   try {
     const { category_id, title, content } = req.body;
     const user_id = req.user.id;
+    const image = req.file.filename;
 
     const categoryExist = await sequelize.query(
       'SELECT id FROM category WHERE id = :category_id',
@@ -208,23 +371,25 @@ const createPost = async (req, res) => {
         statusCode: 404
       });
     }
-    
+
     await sequelize.query(
-      `INSERT INTO post (user_id, category_id, title, contents, created_at)
-        VALUES (:user_id, :category_id, :title, :content, now())`,
+      `INSERT INTO post (user_id, category_id, title, contents, created_at, images)
+        VALUES (:user_id, :category_id, :title, :content, now(), :image)`,
       {
         replacements: {
           user_id,
           category_id,
           title,
-          content
+          content,
+          image,
         }
       }
     );
 
     return res.status(200).json({
       message: 'create success',
-      statusCode: 200
+      statusCode: 200,
+      data: req.file.filename,
     });
   } catch (error) {
     return res.status(500).json({
@@ -361,6 +526,7 @@ module.exports = {
   createPost,
   getData,
   getById,
+  getByUser,
   editPost,
   deletePost,
 }

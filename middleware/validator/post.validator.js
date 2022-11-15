@@ -1,4 +1,4 @@
-const { body, param, query, validationResult } = require('express-validator');
+const { body, param, query, check, validationResult } = require('express-validator');
 
 // get query validator
 const queryData = [
@@ -23,7 +23,9 @@ const queryData = [
 ];
 
 const createData = [
-  body('category_id').isInt({min: 1}).withMessage('category_id must be integer larger than 0'),
+  check('category_id').notEmpty().withMessage('category_id must be integer larger than 0'),
+  check('title').notEmpty().withMessage('title cannot be empty'),
+  check('content').notEmpty().withMessage('content cannot be empty'),
   (req, res, next) => {
     const errors = validationResult(req);
 
@@ -54,8 +56,25 @@ const paramId = [
   }
 ];
 
+const paramUsername = [
+  param('username').notEmpty().withMessage('username cannot be empty'),
+  (req, res, next) => {
+    const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        message: errors.array(),
+        statusCode: 400
+      });
+    }
+
+    next();
+  }
+];
+
 module.exports = {
   queryData,
   createData,
   paramId,
+  paramUsername,
 };

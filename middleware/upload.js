@@ -18,7 +18,7 @@ function getExt(str) {
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, __basedir + '/public/images');
+    cb(null, __basedir + '/public/images/');
   },
   filename: (req, file, cb) => {
     console.log(file.originalname);

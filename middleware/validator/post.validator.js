@@ -23,7 +23,7 @@ const queryData = [
 ];
 
 const createData = [
-  check('category_id').notEmpty().withMessage('category_id must be integer larger than 0'),
+  check('category_id').isInt({min: 1}).withMessage('category_id must be integer larger than 0'),
   check('title').notEmpty().withMessage('title cannot be empty'),
   check('content').notEmpty().withMessage('content cannot be empty'),
   (req, res, next) => {

@@ -1,7 +1,7 @@
 const { sequelize } = require('../db');
 const moment = require('moment-timezone');
 const userTimezone = require('../config/timezone.config');
-const uploadFile = require('../utils/upload');
+const extention = require('../utils/get.extention');
 
 // get data controller
 const getData = async (req, res) => {
@@ -355,7 +355,7 @@ const createPost = async (req, res) => {
   try {
     const { category_id, title, content } = req.body;
     const user_id = req.user.id;
-    const image = req.file.filename;
+    const imageFile = req.files.image;
 
     const categoryExist = await sequelize.query(
       'SELECT id FROM category WHERE id = :category_id',
@@ -372,16 +372,26 @@ const createPost = async (req, res) => {
       });
     }
 
+    const fileName =  Date.now() + extention.getExt(imageFile.name);
+    const uploadPath = __basedir + '/public/images/' + fileName;
+    console.log(fileName);
+    
+    imageFile.mv(uploadPath, function(err) {
+      if (err) {
+        return res.status(500).send(err);
+      }
+    });
+
     await sequelize.query(
       `INSERT INTO post (user_id, category_id, title, contents, created_at, images)
-        VALUES (:user_id, :category_id, :title, :content, now(), :image)`,
+        VALUES (:user_id, :category_id, :title, :content, now(), :fileName)`,
       {
         replacements: {
           user_id,
           category_id,
           title,
           content,
-          image,
+          fileName,
         }
       }
     );
@@ -389,7 +399,7 @@ const createPost = async (req, res) => {
     return res.status(200).json({
       message: 'create success',
       statusCode: 200,
-      data: req.file.filename,
+      data: fileName,
     });
   } catch (error) {
     return res.status(500).json({

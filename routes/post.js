@@ -18,7 +18,7 @@ router.get('/id/:id', postValidator.paramId, postController.getById);
 router.get('/user/:username', postValidator.paramUsername, postValidator.queryData, postController.getByUser);
 
 // create post
-router.post('/create', uploadFile, postValidator.createData, postController.createPost);
+router.post('/create', postValidator.createData, postController.createPost);
 
 // update post
 router.patch('/edit/:id', postValidator.paramId, postController.editPost);

@@ -5,11 +5,10 @@ const logger = require('morgan');
 require('dotenv').config();
 const cors = require('cors');
 const corsOption = require('./config/cors.option');
+const fileUpload = require('express-fileupload');
 
 // variable untuk menyimpan directory penyimpanan file
 global.__basedir = __dirname;
-
-// const bodyParser = require('body-parser');
 
 const indexRouter = require('./routes/index');
 
@@ -23,8 +22,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(cors(corsOption()));
 
-// app.use(bodyParser.json());
-// app.use(bodyParser.urlencoded({ extended: true }));
+app.use(fileUpload());
 
 app.use('/', indexRouter);
 

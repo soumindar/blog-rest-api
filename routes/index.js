@@ -10,7 +10,7 @@ router.get('/', function(req, res, next) {
   res.render('index', { title: 'Express' });
 });
 
-router.use('/', authRouter);
+router.use('/auth', authRouter);
 router.use('/users', usersRouter);
 router.use('/post', postRouter);
 router.use('/category', categoryRouter);

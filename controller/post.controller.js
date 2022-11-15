@@ -84,7 +84,12 @@ const getData = async (req, res) => {
       }
     );
     
-    const postData = getPost[0].map(x => ({...x, created_at: moment(x.created_at).tz(userTimezone).format()}));
+    const postData = getPost[0].map(x => ({
+        ...x,
+        created_at: moment(x.created_at).tz(userTimezone).format(),
+        images: __basedir + '/public/images/' + x.images
+      })
+    );
     const getDataAmount = await sequelize.query(
       `SELECT
           COUNT(p.id) as data_amount
